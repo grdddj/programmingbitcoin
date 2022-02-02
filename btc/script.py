@@ -2,7 +2,7 @@ from io import BytesIO
 from logging import getLogger
 from unittest import TestCase
 
-from helper import (
+from .helper import (
     decode_base58,
     encode_varint,
     h160_to_p2pkh_address,
@@ -12,7 +12,7 @@ from helper import (
     read_varint,
     sha256,
 )
-from op import (
+from .op import (
     op_equal,
     op_hash160,
     op_verify,
@@ -232,7 +232,7 @@ class Script:
                         print('bad sha256 {} vs {}'.format
                             (s256.hex(), sha256(witness_script).hex()))
                         return False
-                    stream = BytesIO(encode_varint(len(witness_script)) 
+                    stream = BytesIO(encode_varint(len(witness_script))
                         + witness_script)
                     witness_script_cmds = Script.parse(stream).cmds  # <6>
                     cmds.extend(witness_script_cmds)

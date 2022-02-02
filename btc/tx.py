@@ -4,8 +4,8 @@ from unittest import TestCase
 import json
 import requests
 
-from ecc import PrivateKey
-from helper import (
+from .ecc import PrivateKey
+from .helper import (
     encode_varint,
     hash256,
     int_to_little_endian,
@@ -13,12 +13,12 @@ from helper import (
     read_varint,
     SIGHASH_ALL,
 )
-from script import p2pkh_script, Script
+from .script import p2pkh_script, Script
 
 
 class TxFetcher:
     cache = {}
-    
+
     @classmethod
     def get_url(cls, testnet=False):
         if testnet:
@@ -65,7 +65,7 @@ class TxFetcher:
 class Tx:
     command = b'tx'
 
-    def __init__(self, version, tx_ins, tx_outs, 
+    def __init__(self, version, tx_ins, tx_outs,
         locktime, testnet=False, segwit=False):
         self.version = version
         self.tx_ins = tx_ins
@@ -126,7 +126,7 @@ class Tx:
         for _ in range(num_outputs):
             outputs.append(TxOut.parse(s))
         locktime = little_endian_to_int(s.read(4))
-        return cls(version, inputs, outputs, locktime, 
+        return cls(version, inputs, outputs, locktime,
                    testnet=testnet, segwit=False)
     # end::source2[]
 
@@ -156,7 +156,7 @@ class Tx:
                     items.append(s.read(item_len))
             tx_in.witness = items
         locktime = little_endian_to_int(s.read(4))
-        return cls(version, inputs, outputs, locktime, 
+        return cls(version, inputs, outputs, locktime,
                    testnet=testnet, segwit=True)
     # end::source3[]
 
