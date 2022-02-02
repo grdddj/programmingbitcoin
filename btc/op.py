@@ -1,18 +1,9 @@
 import hashlib
-
 from logging import getLogger
 from unittest import TestCase
 
-from .ecc import (
-    S256Point,
-    Signature,
-)
-
-from .helper import (
-    hash160,
-    hash256,
-)
-
+from .ecc import S256Point, Signature
+from .helper import hash160, hash256
 
 LOGGER = getLogger(__name__)
 

@@ -1,20 +1,14 @@
-from io import BytesIO
-from unittest import TestCase
-from pathlib import Path
-
 import json
+from io import BytesIO
+from pathlib import Path
+from unittest import TestCase
+
 import requests
 
 from .ecc import PrivateKey
-from .helper import (
-    encode_varint,
-    hash256,
-    int_to_little_endian,
-    little_endian_to_int,
-    read_varint,
-    SIGHASH_ALL,
-)
-from .script import p2pkh_script, Script
+from .helper import (SIGHASH_ALL, encode_varint, hash256, int_to_little_endian,
+                     little_endian_to_int, read_varint)
+from .script import Script, p2pkh_script
 
 
 class TxFetcher:

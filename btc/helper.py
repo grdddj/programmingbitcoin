@@ -1,7 +1,5 @@
-from unittest import TestCase, TestSuite, TextTestRunner
-
 import hashlib
-
+from unittest import TestCase, TestSuite, TextTestRunner
 
 SIGHASH_ALL = 1
 SIGHASH_NONE = 2
