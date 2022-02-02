@@ -2,11 +2,17 @@ from io import BytesIO
 from logging import getLogger
 from unittest import TestCase
 
-from .helper import (decode_base58, encode_varint, h160_to_p2pkh_address,
-                     h160_to_p2sh_address, int_to_little_endian,
-                     little_endian_to_int, read_varint, sha256)
-from .op import (OP_CODE_FUNCTIONS, OP_CODE_NAMES, op_equal, op_hash160,
-                 op_verify)
+from .helper import (
+    decode_base58,
+    encode_varint,
+    h160_to_p2pkh_address,
+    h160_to_p2sh_address,
+    int_to_little_endian,
+    little_endian_to_int,
+    read_varint,
+    sha256,
+)
+from .op import OP_CODE_FUNCTIONS, OP_CODE_NAMES, op_equal, op_hash160, op_verify
 
 
 def p2pkh_script(h160):

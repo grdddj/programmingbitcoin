@@ -5,8 +5,13 @@ from random import randint
 from unittest import TestCase
 
 from .block import Block
-from .helper import (encode_varint, hash256, int_to_little_endian,
-                     little_endian_to_int, read_varint)
+from .helper import (
+    encode_varint,
+    hash256,
+    int_to_little_endian,
+    little_endian_to_int,
+    read_varint,
+)
 
 TX_DATA_TYPE = 1
 BLOCK_DATA_TYPE = 2

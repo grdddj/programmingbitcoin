@@ -6,8 +6,14 @@ from unittest import TestCase
 import requests
 
 from .ecc import PrivateKey
-from .helper import (SIGHASH_ALL, encode_varint, hash256, int_to_little_endian,
-                     little_endian_to_int, read_varint)
+from .helper import (
+    SIGHASH_ALL,
+    encode_varint,
+    hash256,
+    int_to_little_endian,
+    little_endian_to_int,
+    read_varint,
+)
 from .script import Script, p2pkh_script
 
 
