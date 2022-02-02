@@ -1,5 +1,6 @@
 from io import BytesIO
 from unittest import TestCase
+from pathlib import Path
 
 import json
 import requests
@@ -500,7 +501,8 @@ class TxOut:
 
 
 class TxTest(TestCase):
-    cache_file = '../tx.cache'
+    HERE = Path(__file__).resolve().parent
+    cache_file = HERE / 'tx_cache.json'
 
     @classmethod
     def setUpClass(cls):
