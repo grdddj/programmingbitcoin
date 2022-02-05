@@ -2,32 +2,37 @@ import hashlib
 import hmac
 from io import BytesIO
 from random import randint
+from typing import Union
 from unittest import TestCase
 
 from .helper import encode_base58_checksum, hash160
 
 
 class FieldElement:
-    def __init__(self, num, prime):
+    def __init__(self, num: int, prime: int) -> None:
         if num >= prime or num < 0:
-            error = "Num {} not in field range 0 to {}".format(num, prime - 1)
+            error = f"Num {num} not in field range 0 to {prime - 1}"
             raise ValueError(error)
         self.num = num
         self.prime = prime
 
-    def __repr__(self):
-        return "FieldElement_{}({})".format(self.prime, self.num)
+    def __repr__(self) -> str:
+        return f"FieldElement_{self.prime}({self.num})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FieldElement):
+            raise NotImplementedError
         if other is None:
             return False
         return self.num == other.num and self.prime == other.prime
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
+        if not isinstance(other, FieldElement):
+            raise NotImplementedError
         # this should be the inverse of the == operator
         return not (self == other)
 
-    def __add__(self, other):
+    def __add__(self, other: "FieldElement") -> "FieldElement":
         if self.prime != other.prime:
             raise TypeError("Cannot add two numbers in different Fields")
         # self.num and other.num are the actual values
@@ -36,7 +41,7 @@ class FieldElement:
         # We return an element of the same class
         return self.__class__(num, self.prime)
 
-    def __sub__(self, other):
+    def __sub__(self, other: "FieldElement") -> "FieldElement":
         if self.prime != other.prime:
             raise TypeError("Cannot subtract two numbers in different Fields")
         # self.num and other.num are the actual values
@@ -45,7 +50,7 @@ class FieldElement:
         # We return an element of the same class
         return self.__class__(num, self.prime)
 
-    def __mul__(self, other):
+    def __mul__(self, other: "FieldElement") -> "FieldElement":
         if self.prime != other.prime:
             raise TypeError("Cannot multiply two numbers in different Fields")
         # self.num and other.num are the actual values
@@ -54,12 +59,12 @@ class FieldElement:
         # We return an element of the same class
         return self.__class__(num, self.prime)
 
-    def __pow__(self, exponent):
+    def __pow__(self, exponent: int) -> "FieldElement":
         n = exponent % (self.prime - 1)
         num = pow(self.num, n, self.prime)
         return self.__class__(num, self.prime)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: "FieldElement") -> "FieldElement":
         if self.prime != other.prime:
             raise TypeError("Cannot divide two numbers in different Fields")
         # self.num and other.num are the actual values
@@ -72,7 +77,7 @@ class FieldElement:
         # We return an element of the same class
         return self.__class__(num, self.prime)
 
-    def __rmul__(self, coefficient):
+    def __rmul__(self, coefficient: int) -> "FieldElement":
         num = (self.num * coefficient) % self.prime
         return self.__class__(num=num, prime=self.prime)
 
@@ -131,7 +136,13 @@ class FieldElementTest(TestCase):
 
 
 class Point:
-    def __init__(self, x, y, a, b):
+    def __init__(
+        self,
+        x: Union[int, FieldElement, None],
+        y: Union[int, FieldElement, None],
+        a: int,
+        b: int,
+    ) -> None:
         self.a = a
         self.b = b
         self.x = x
@@ -141,13 +152,16 @@ class Point:
         # with None values for both.
         if self.x is None and self.y is None:
             return
+        assert self.x is not None and self.y is not None
         # make sure that the elliptic curve equation is satisfied
         # y**2 == x**3 + a*x + b
-        if self.y ** 2 != self.x ** 3 + a * x + b:
+        if self.y ** 2 != self.x ** 3 + a * self.x + b:
             # if not, throw a ValueError
-            raise ValueError("({}, {}) is not on the curve".format(x, y))
+            raise ValueError(f"({x}, {y}) is not on the curve")
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Point):
+            raise NotImplementedError
         return (
             self.x == other.x
             and self.y == other.y
@@ -155,25 +169,28 @@ class Point:
             and self.b == other.b
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
+        if not isinstance(other, Point):
+            raise NotImplementedError
         # this should be the inverse of the == operator
         return not (self == other)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.x is None:
             return "Point(infinity)"
         elif isinstance(self.x, FieldElement):
-            return "Point({},{})_{}_{} FieldElement({})".format(
-                self.x.num, self.y.num, self.a.num, self.b.num, self.x.prime
+            assert (
+                isinstance(self.y, FieldElement)
+                and isinstance(self.a, FieldElement)
+                and isinstance(self.b, FieldElement)
             )
+            return f"Point({self.x.num},{self.y.num})_{self.a.num}_{self.b.num} FieldElement({self.x.prime})"
         else:
-            return "Point({},{})_{}_{}".format(self.x, self.y, self.a, self.b)
+            return f"Point({self.x},{self.y})_{self.a}_{self.b}"
 
-    def __add__(self, other):
+    def __add__(self, other: "Point") -> "Point":
         if self.a != other.a or self.b != other.b:
-            raise TypeError(
-                "Points {}, {} are not on the same curve".format(self, other)
-            )
+            raise TypeError(f"Points {self}, {other} are not on the same curve")
         # Case 0.0: self is the point at infinity, return other
         if self.x is None:
             return other
@@ -215,7 +232,9 @@ class Point:
             y = s * (self.x - x) - self.y
             return self.__class__(x, y, self.a, self.b)
 
-    def __rmul__(self, coefficient):
+        raise ValueError("No scenario matched")
+
+    def __rmul__(self, coefficient: int) -> "Point":
         coef = coefficient
         current = self
         result = self.__class__(None, None, self.a, self.b)
@@ -361,35 +380,41 @@ N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 class S256Field(FieldElement):
-    def __init__(self, num, prime=None):
+    def __init__(self, num: int, prime: int = None) -> None:
         super().__init__(num=num, prime=P)
 
-    def __repr__(self):
-        return "{:x}".format(self.num).zfill(64)
+    def __repr__(self) -> str:
+        return f"{self.num:x}".zfill(64)
 
-    def sqrt(self):
+    def sqrt(self) -> "S256Field":
         return self ** ((P + 1) // 4)
 
 
 class S256Point(Point):
-    def __init__(self, x, y, a=None, b=None):
+    def __init__(
+        self,
+        x: Union[int, FieldElement, None],
+        y: Union[int, FieldElement, None],
+        a=None,
+        b=None,
+    ) -> None:
         a, b = S256Field(A), S256Field(B)
-        if type(x) == int:
+        if isinstance(x, int):
             super().__init__(x=S256Field(x), y=S256Field(y), a=a, b=b)
         else:
             super().__init__(x=x, y=y, a=a, b=b)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.x is None:
             return "S256Point(infinity)"
         else:
-            return "S256Point({}, {})".format(self.x, self.y)
+            return f"S256Point({self.x}, {self.y})"
 
-    def __rmul__(self, coefficient):
+    def __rmul__(self, coefficient: int) -> "Point":
         coef = coefficient % N
         return super().__rmul__(coef)
 
-    def verify(self, z, sig):
+    def verify(self, z: int, sig: "Signature") -> bool:
         # By Fermat's Little Theorem, 1/s = pow(s, N-2, N)
         s_inv = pow(sig.s, N - 2, N)
         # u = z / s
@@ -400,7 +425,7 @@ class S256Point(Point):
         total = u * G + v * self
         return total.x.num == sig.r
 
-    def sec(self, compressed=True):
+    def sec(self, compressed: bool = True) -> bytes:
         """returns the binary version of the SEC format"""
         # if compressed, starts with b'\x02' if self.y.num is even, b'\x03' if self.y is odd
         # then self.x.num
@@ -418,10 +443,10 @@ class S256Point(Point):
                 + self.y.num.to_bytes(32, "big")
             )
 
-    def hash160(self, compressed=True):
+    def hash160(self, compressed: bool = True) -> bytes:
         return hash160(self.sec(compressed))
 
-    def address(self, compressed=True, testnet=False):
+    def address(self, compressed: bool = True, testnet: bool = False) -> str:
         """Returns the address string"""
         h160 = self.hash160(compressed)
         if testnet:
@@ -431,7 +456,7 @@ class S256Point(Point):
         return encode_base58_checksum(prefix + h160)
 
     @classmethod
-    def parse(self, sec_bin):
+    def parse(cls, sec_bin: bytes) -> "S256Point":
         """returns a Point object from a SEC binary (not hex)"""
         if sec_bin[0] == 4:
             x = int.from_bytes(sec_bin[1:33], "big")
@@ -565,21 +590,21 @@ class S256Test(TestCase):
 
 
 class Signature:
-    def __init__(self, r, s):
+    def __init__(self, r: int, s: int) -> None:
         self.r = r
         self.s = s
 
-    def __repr__(self):
-        return "Signature({:x},{:x})".format(self.r, self.s)
+    def __repr__(self) -> str:
+        return f"Signature({self.r:x},{self.s:x})"
 
-    def der(self):
+    def der(self) -> bytes:
         rbin = self.r.to_bytes(32, byteorder="big")
         # remove all null bytes at the beginning
         rbin = rbin.lstrip(b"\x00")
         # if rbin has a high bit, add a \x00
         if rbin[0] & 0x80:
             rbin = b"\x00" + rbin
-        result = bytes([2, len(rbin)]) + rbin  # <1>
+        result = bytes([2, len(rbin)]) + rbin
         sbin = self.s.to_bytes(32, byteorder="big")
         # remove all null bytes at the beginning
         sbin = sbin.lstrip(b"\x00")
@@ -590,7 +615,7 @@ class Signature:
         return bytes([0x30, len(result)]) + result
 
     @classmethod
-    def parse(cls, signature_bin):
+    def parse(cls, signature_bin: bytes) -> "Signature":
         s = BytesIO(signature_bin)
         compound = s.read(1)[0]
         if compound != 0x30:
@@ -629,14 +654,14 @@ class SignatureTest(TestCase):
 
 
 class PrivateKey:
-    def __init__(self, secret):
+    def __init__(self, secret: int) -> None:
         self.secret = secret
-        self.point = secret * G
+        self.point: S256Point = secret * G
 
-    def hex(self):
-        return "{:x}".format(self.secret).zfill(64)
+    def hex(self) -> str:
+        return f"{self.secret:x}".zfill(64)
 
-    def sign(self, z):
+    def sign(self, z: int) -> Signature:
         k = self.deterministic_k(z)
         # r is the x coordinate of the resulting point k*G
         r = (k * G).x.num
@@ -650,7 +675,7 @@ class PrivateKey:
         # Signature(r, s)
         return Signature(r, s)
 
-    def deterministic_k(self, z):
+    def deterministic_k(self, z: int) -> int:
         k = b"\x00" * 32
         v = b"\x01" * 32
         if z > N:
@@ -670,7 +695,7 @@ class PrivateKey:
             k = hmac.new(k, v + b"\x00", s256).digest()
             v = hmac.new(k, v, s256).digest()
 
-    def wif(self, compressed=True, testnet=False):
+    def wif(self, compressed: bool = True, testnet: bool = False) -> str:
         # convert the secret from integer to a 32-bytes in big endian using num.to_bytes(32, 'big')
         secret_bytes = self.secret.to_bytes(32, "big")
         # prepend b'\xef' on testnet, b'\x80' on mainnet

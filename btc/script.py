@@ -1,5 +1,6 @@
 from io import BytesIO
 from logging import getLogger
+from typing import List, Optional, Union
 from unittest import TestCase
 
 from .helper import (
@@ -15,66 +16,58 @@ from .helper import (
 from .op import OP_CODE_FUNCTIONS, OP_CODE_NAMES, op_equal, op_hash160, op_verify
 
 
-def p2pkh_script(h160):
+def p2pkh_script(h160: bytes) -> "Script":
     """Takes a hash160 and returns the p2pkh ScriptPubKey"""
     return Script([0x76, 0xA9, h160, 0x88, 0xAC])
 
 
-def p2sh_script(h160):
+def p2sh_script(h160: bytes) -> "Script":
     """Takes a hash160 and returns the p2sh ScriptPubKey"""
     return Script([0xA9, h160, 0x87])
 
 
-# tag::source1[]
-def p2wpkh_script(h160):
+def p2wpkh_script(h160: bytes) -> "Script":
     """Takes a hash160 and returns the p2wpkh ScriptPubKey"""
-    return Script([0x00, h160])  # <1>
+    return Script([0x00, h160])
 
 
-# end::source1[]
-
-
-# tag::source4[]
-def p2wsh_script(h256):
+def p2wsh_script(h256: bytes) -> "Script":
     """Takes a hash160 and returns the p2wsh ScriptPubKey"""
-    return Script([0x00, h256])  # <1>
-
-
-# end::source4[]
+    return Script([0x00, h256])
 
 
 LOGGER = getLogger(__name__)
 
 
 class Script:
-    def __init__(self, cmds=None):
+    def __init__(self, cmds: Optional[List[Union[int, bytes]]] = None) -> None:
         if cmds is None:
             self.cmds = []
         else:
             self.cmds = cmds
 
-    def __repr__(self):
-        result = []
+    def __repr__(self) -> str:
+        result: List[str] = []
         for cmd in self.cmds:
-            if type(cmd) == int:
-                if OP_CODE_NAMES.get(cmd):
-                    name = OP_CODE_NAMES.get(cmd)
+            if isinstance(cmd, int):
+                if cmd in OP_CODE_NAMES:
+                    name = OP_CODE_NAMES[cmd]
                 else:
-                    name = "OP_[{}]".format(cmd)
+                    name = f"OP_[{cmd}]"
                 result.append(name)
             else:
                 result.append(cmd.hex())
         return " ".join(result)
 
-    def __add__(self, other):
+    def __add__(self, other: "Script") -> "Script":
         return Script(self.cmds + other.cmds)
 
     @classmethod
-    def parse(cls, s):
+    def parse(cls, s: BytesIO) -> "Script":
         # get the length of the entire field
         length = read_varint(s)
         # initialize the cmds array
-        cmds = []
+        cmds: List[Union[int, bytes]] = []
         # initialize the number of bytes we've read to 0
         count = 0
         # loop until we've read length bytes
@@ -112,13 +105,13 @@ class Script:
             raise SyntaxError("parsing script failed")
         return cls(cmds)
 
-    def raw_serialize(self):
+    def raw_serialize(self) -> bytes:
         # initialize what we'll send back
         result = b""
         # go through each cmd
         for cmd in self.cmds:
             # if the cmd is an integer, it's an opcode
-            if type(cmd) == int:
+            if isinstance(cmd, int):
                 # turn the cmd into a single byte integer using int_to_little_endian
                 result += int_to_little_endian(cmd, 1)
             else:
@@ -142,7 +135,7 @@ class Script:
                 result += cmd
         return result
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         # get the raw serialization (no prepended length)
         result = self.raw_serialize()
         # get the length of the whole thing
@@ -150,36 +143,36 @@ class Script:
         # encode_varint the total length of the result and prepend
         return encode_varint(total) + result
 
-    def evaluate(self, z, witness):
+    def evaluate(self, z: int, witness: Optional[List[Union[int, bytes]]]) -> bool:
         # create a copy as we may need to add to this list if we have a
         # RedeemScript
         cmds = self.cmds[:]
-        stack = []
-        altstack = []
+        stack: List[bytes] = []
+        altstack: List[bytes] = []
         while len(cmds) > 0:
             cmd = cmds.pop(0)
-            if type(cmd) == int:
+            if isinstance(cmd, int):
                 # do what the opcode says
                 operation = OP_CODE_FUNCTIONS[cmd]
                 if cmd in (99, 100):
                     # op_if/op_notif require the cmds array
                     if not operation(stack, cmds):
-                        LOGGER.info("bad op: {}".format(OP_CODE_NAMES[cmd]))
+                        LOGGER.info(f"bad op: {OP_CODE_NAMES[cmd]}")
                         return False
                 elif cmd in (107, 108):
                     # op_toaltstack/op_fromaltstack require the altstack
                     if not operation(stack, altstack):
-                        LOGGER.info("bad op: {}".format(OP_CODE_NAMES[cmd]))
+                        LOGGER.info(f"bad op: {OP_CODE_NAMES[cmd]}")
                         return False
                 elif cmd in (172, 173, 174, 175):
                     # these are signing operations, they need a sig_hash
                     # to check against
                     if not operation(stack, z):
-                        LOGGER.info("bad op: {}".format(OP_CODE_NAMES[cmd]))
+                        LOGGER.info(f"bad op: {OP_CODE_NAMES[cmd]}")
                         return False
                 else:
                     if not operation(stack):
-                        LOGGER.info("bad op: {}".format(OP_CODE_NAMES[cmd]))
+                        LOGGER.info(f"bad op: {OP_CODE_NAMES[cmd]}")
                         return False
             else:
                 # add the cmd to the stack
@@ -190,7 +183,7 @@ class Script:
                 if (
                     len(cmds) == 3
                     and cmds[0] == 0xA9
-                    and type(cmds[1]) == bytes
+                    and isinstance(cmds[1], bytes)
                     and len(cmds[1]) == 20
                     and cmds[2] == 0x87
                 ):
@@ -198,6 +191,7 @@ class Script:
                     # we execute the next three opcodes
                     cmds.pop()
                     h160 = cmds.pop()
+                    assert isinstance(h160, bytes)
                     cmds.pop()
                     if not op_hash160(stack):
                         return False
@@ -214,41 +208,40 @@ class Script:
                     cmds.extend(Script.parse(stream).cmds)
                 # witness program version 0 rule. if stack cmds are:
                 # 0 <20 byte hash> this is p2wpkh
-                # tag::source3[]
-                if len(stack) == 2 and stack[0] == b"" and len(stack[1]) == 20:  # <1>
+                if len(stack) == 2 and stack[0] == b"" and len(stack[1]) == 20:
                     h160 = stack.pop()
                     stack.pop()
+                    assert witness is not None
                     cmds.extend(witness)
                     cmds.extend(p2pkh_script(h160).cmds)
-                # end::source3[]
                 # witness program version 0 rule. if stack cmds are:
                 # 0 <32 byte hash> this is p2wsh
-                # tag::source6[]
                 if len(stack) == 2 and stack[0] == b"" and len(stack[1]) == 32:
-                    s256 = stack.pop()  # <1>
-                    stack.pop()  # <2>
-                    cmds.extend(witness[:-1])  # <3>
-                    witness_script = witness[-1]  # <4>
-                    if s256 != sha256(witness_script):  # <5>
+                    s256 = stack.pop()
+                    stack.pop()
+                    assert witness is not None
+                    cmds.extend(witness[:-1])
+                    witness_script = witness[-1]
+                    assert isinstance(witness_script, bytes)
+                    if s256 != sha256(witness_script):
                         print(
-                            "bad sha256 {} vs {}".format(
-                                s256.hex(), sha256(witness_script).hex()
-                            )
+                            f"bad sha256 {s256.hex()} vs {sha256(witness_script).hex()}"
                         )
                         return False
                     stream = BytesIO(
                         encode_varint(len(witness_script)) + witness_script
                     )
-                    witness_script_cmds = Script.parse(stream).cmds  # <6>
+                    witness_script_cmds = Script.parse(stream).cmds
                     cmds.extend(witness_script_cmds)
-                # end::source6[]
+        # Stack is empty
         if len(stack) == 0:
             return False
+        # There is zero element at the top
         if stack.pop() == b"":
             return False
         return True
 
-    def is_p2pkh_script_pubkey(self):
+    def is_p2pkh_script_pubkey(self) -> bool:
         """Returns whether this follows the
         OP_DUP OP_HASH160 <20 byte hash> OP_EQUALVERIFY OP_CHECKSIG pattern."""
         # there should be exactly 5 cmds
@@ -258,13 +251,13 @@ class Script:
             len(self.cmds) == 5
             and self.cmds[0] == 0x76
             and self.cmds[1] == 0xA9
-            and type(self.cmds[2]) == bytes
+            and isinstance(self.cmds[2], bytes)
             and len(self.cmds[2]) == 20
             and self.cmds[3] == 0x88
             and self.cmds[4] == 0xAC
         )
 
-    def is_p2sh_script_pubkey(self):
+    def is_p2sh_script_pubkey(self) -> bool:
         """Returns whether this follows the
         OP_HASH160 <20 byte hash> OP_EQUAL pattern."""
         # there should be exactly 3 cmds
@@ -272,43 +265,39 @@ class Script:
         return (
             len(self.cmds) == 3
             and self.cmds[0] == 0xA9
-            and type(self.cmds[1]) == bytes
+            and isinstance(self.cmds[1], bytes)
             and len(self.cmds[1]) == 20
             and self.cmds[2] == 0x87
         )
 
-    # tag::source2[]
-    def is_p2wpkh_script_pubkey(self):  # <2>
+    def is_p2wpkh_script_pubkey(self) -> bool:
         return (
             len(self.cmds) == 2
             and self.cmds[0] == 0x00
-            and type(self.cmds[1]) == bytes
+            and isinstance(self.cmds[1], bytes)
             and len(self.cmds[1]) == 20
         )
 
-    # end::source2[]
-
-    # tag::source5[]
-    def is_p2wsh_script_pubkey(self):
+    def is_p2wsh_script_pubkey(self) -> bool:
         return (
             len(self.cmds) == 2
             and self.cmds[0] == 0x00
-            and type(self.cmds[1]) == bytes
+            and isinstance(self.cmds[1], bytes)
             and len(self.cmds[1]) == 32
         )
 
-    # end::source5[]
-
-    def address(self, testnet=False):
+    def address(self, testnet: bool = False) -> str:
         """Returns the address corresponding to the script"""
         if self.is_p2pkh_script_pubkey():  # p2pkh
             # hash160 is the 3rd cmd
             h160 = self.cmds[2]
+            assert isinstance(h160, bytes)
             # convert to p2pkh address using h160_to_p2pkh_address (remember testnet)
             return h160_to_p2pkh_address(h160, testnet)
         elif self.is_p2sh_script_pubkey():  # p2sh
             # hash160 is the 2nd cmd
             h160 = self.cmds[1]
+            assert isinstance(h160, bytes)
             # convert to p2sh address using h160_to_p2sh_address (remember testnet)
             return h160_to_p2sh_address(h160, testnet)
         raise ValueError("Unknown ScriptPubKey")
@@ -322,6 +311,7 @@ class ScriptTest(TestCase):
             )
         )
         script = Script.parse(script_pubkey)
+        print("script", script.cmds)
         want = bytes.fromhex(
             "304402207899531a52d59a6de200179928ca900254a36b8dff8bb75f5f5d71b1cdc26125022008b422690b8461cb52c3cc30330b23d574351872b7c361e9aae3649071c1a71601"
         )

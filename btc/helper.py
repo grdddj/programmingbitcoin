@@ -1,4 +1,6 @@
 import hashlib
+from io import BytesIO
+from typing import List
 from unittest import TestCase, TestSuite, TextTestRunner
 
 SIGHASH_ALL = 1
@@ -15,21 +17,21 @@ def run(test):
     TextTestRunner().run(suite)
 
 
-def hash160(s):
+def hash160(s: bytes) -> bytes:
     """sha256 followed by ripemd160"""
     return hashlib.new("ripemd160", hashlib.sha256(s).digest()).digest()
 
 
-def hash256(s):
+def hash256(s: bytes) -> bytes:
     """two rounds of sha256"""
     return hashlib.sha256(hashlib.sha256(s).digest()).digest()
 
 
-def sha256(s):
+def sha256(s: bytes) -> bytes:
     return hashlib.sha256(s).digest()
 
 
-def encode_base58(s):
+def encode_base58(s: bytes) -> str:
     # determine how many 0 bytes (b'\x00') s starts with
     count = 0
     for c in s:
@@ -47,11 +49,11 @@ def encode_base58(s):
     return prefix + result
 
 
-def encode_base58_checksum(s):
+def encode_base58_checksum(s: bytes) -> str:
     return encode_base58(s + hash256(s)[:4])
 
 
-def decode_base58(s):
+def decode_base58(s: str) -> bytes:
     num = 0
     for c in s:
         num *= 58
@@ -59,25 +61,23 @@ def decode_base58(s):
     combined = num.to_bytes(25, byteorder="big")
     checksum = combined[-4:]
     if hash256(combined[:-4])[:4] != checksum:
-        raise ValueError(
-            "bad address: {} {}".format(checksum, hash256(combined[:-4])[:4])
-        )
+        raise ValueError(f"bad address: {checksum} {hash256(combined[:-4])[:4]}")
     return combined[1:-4]
 
 
-def little_endian_to_int(b):
+def little_endian_to_int(b: bytes) -> int:
     """little_endian_to_int takes byte sequence as a little-endian number.
     Returns an integer"""
     return int.from_bytes(b, "little")
 
 
-def int_to_little_endian(n, length):
+def int_to_little_endian(n: int, length: int) -> bytes:
     """endian_to_little_endian takes an integer and returns the little-endian
     byte sequence of length"""
     return n.to_bytes(length, "little")
 
 
-def read_varint(s):
+def read_varint(s: BytesIO) -> int:
     """read_varint reads a variable integer from a stream"""
     i = s.read(1)[0]
     if i == 0xFD:
@@ -94,7 +94,7 @@ def read_varint(s):
         return i
 
 
-def encode_varint(i):
+def encode_varint(i: int) -> bytes:
     """encodes an integer as a varint"""
     if i < 0xFD:
         return bytes([i])
@@ -105,10 +105,10 @@ def encode_varint(i):
     elif i < 0x10000000000000000:
         return b"\xff" + int_to_little_endian(i, 8)
     else:
-        raise ValueError("integer too large: {}".format(i))
+        raise ValueError(f"integer too large: {i}")
 
 
-def h160_to_p2pkh_address(h160, testnet=False):
+def h160_to_p2pkh_address(h160: bytes, testnet: bool = False) -> str:
     """Takes a byte sequence hash160 and returns a p2pkh address string"""
     # p2pkh has a prefix of b'\x00' for mainnet, b'\x6f' for testnet
     if testnet:
@@ -118,7 +118,7 @@ def h160_to_p2pkh_address(h160, testnet=False):
     return encode_base58_checksum(prefix + h160)
 
 
-def h160_to_p2sh_address(h160, testnet=False):
+def h160_to_p2sh_address(h160: bytes, testnet: bool = False) -> str:
     """Takes a byte sequence hash160 and returns a p2sh address string"""
     # p2sh has a prefix of b'\x05' for mainnet, b'\xc4' for testnet
     if testnet:
@@ -128,7 +128,7 @@ def h160_to_p2sh_address(h160, testnet=False):
     return encode_base58_checksum(prefix + h160)
 
 
-def bits_to_target(bits):
+def bits_to_target(bits: bytes) -> int:
     """Turns bits into a target (large 256-bit integer)"""
     # last byte is exponent
     exponent = bits[-1]
@@ -139,7 +139,7 @@ def bits_to_target(bits):
     return coefficient * 256 ** (exponent - 3)
 
 
-def target_to_bits(target):
+def target_to_bits(target: int) -> bytes:
     """Turns a target integer back into bits, which is 4 bytes"""
     raw_bytes = target.to_bytes(32, "big")
     # get rid of leading 0's
@@ -159,7 +159,7 @@ def target_to_bits(target):
     return new_bits
 
 
-def calculate_new_bits(previous_bits, time_differential):
+def calculate_new_bits(previous_bits: bytes, time_differential: int) -> bytes:
     """Calculates the new bits given
     a 2016-block time differential and the previous bits"""
     # if the time differential is greater than 8 weeks, set to 8 weeks
@@ -177,13 +177,13 @@ def calculate_new_bits(previous_bits, time_differential):
     return target_to_bits(new_target)
 
 
-def merkle_parent(hash1, hash2):
+def merkle_parent(hash1: bytes, hash2: bytes) -> bytes:
     """Takes the binary hashes and calculates the hash256"""
     # return the hash256 of hash1 + hash2
     return hash256(hash1 + hash2)
 
 
-def merkle_parent_level(hashes):
+def merkle_parent_level(hashes: List[bytes]) -> List[bytes]:
     """Takes a list of binary hashes and returns a list that's half
     the length"""
     # if the list has exactly 1 element raise an error
@@ -194,7 +194,7 @@ def merkle_parent_level(hashes):
     if len(hashes) % 2 == 1:
         hashes.append(hashes[-1])
     # initialize next level
-    parent_level = []
+    parent_level: List[bytes] = []
     # loop over every pair (use: for i in range(0, len(hashes), 2))
     for i in range(0, len(hashes), 2):
         # get the merkle parent of the hashes at index i and i+1
@@ -205,7 +205,7 @@ def merkle_parent_level(hashes):
     return parent_level
 
 
-def merkle_root(hashes):
+def merkle_root(hashes: List[bytes]) -> bytes:
     """Takes a list of binary hashes and returns the merkle root"""
     # current level starts as hashes
     current_level = hashes
@@ -217,7 +217,7 @@ def merkle_root(hashes):
     return current_level[0]
 
 
-def bit_field_to_bytes(bit_field):
+def bit_field_to_bytes(bit_field: List[int]) -> bytes:
     if len(bit_field) % 8 != 0:
         raise RuntimeError("bit_field does not have a length that is divisible by 8")
     result = bytearray(len(bit_field) // 8)
@@ -228,8 +228,8 @@ def bit_field_to_bytes(bit_field):
     return bytes(result)
 
 
-def bytes_to_bit_field(some_bytes):
-    flag_bits = []
+def bytes_to_bit_field(some_bytes: bytes) -> List[int]:
+    flag_bits: List[int] = []
     # iterate over each byte of flags
     for byte in some_bytes:
         # iterate over each bit, right-to-left
@@ -241,7 +241,7 @@ def bytes_to_bit_field(some_bytes):
     return flag_bits
 
 
-def murmur3(data, seed=0):
+def murmur3(data: bytes, seed: int = 0) -> int:
     """from http://stackoverflow.com/questions/13305290/is-there-a-pure-python-implementation-of-murmurhash"""
     c1 = 0xCC9E2D51
     c2 = 0x1B873593

@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import List, Optional
 from unittest import TestCase
 
 from .helper import (
@@ -20,8 +21,15 @@ LOWEST_BITS = bytes.fromhex("ffff001d")
 
 class Block:
     def __init__(
-        self, version, prev_block, merkle_root, timestamp, bits, nonce, tx_hashes=None
-    ):
+        self,
+        version: int,
+        prev_block: bytes,
+        merkle_root: bytes,
+        timestamp: int,
+        bits: bytes,
+        nonce: bytes,
+        tx_hashes: Optional[List[bytes]] = None,
+    ) -> None:
         self.version = version
         self.prev_block = prev_block
         self.merkle_root = merkle_root
@@ -31,7 +39,7 @@ class Block:
         self.tx_hashes = tx_hashes
 
     @classmethod
-    def parse(cls, s):
+    def parse(cls, s: BytesIO) -> "Block":
         """Takes a byte stream and parses a block. Returns a Block object"""
         # s.read(n) will read n bytes from the stream
         # version - 4 bytes, little endian, interpret as int
@@ -49,7 +57,7 @@ class Block:
         # initialize class
         return cls(version, prev_block, merkle_root, timestamp, bits, nonce)
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         """Returns the 80 byte block header"""
         # version - 4 bytes, little endian
         result = int_to_little_endian(self.version, 4)
@@ -65,7 +73,7 @@ class Block:
         result += self.nonce
         return result
 
-    def hash(self):
+    def hash(self) -> bytes:
         """Returns the hash256 interpreted little endian of the block"""
         # serialize
         s = self.serialize()
@@ -81,30 +89,30 @@ class Block:
         # that is 001
         return self.version >> 29 == 0b001
 
-    def bip91(self):
+    def bip91(self) -> bool:
         """Returns whether this block is signaling readiness for BIP91"""
         # BIP91 is signalled if the 5th bit from the right is 1
         # shift 4 bits to the right and see if the last bit is 1
         return self.version >> 4 & 1 == 1
 
-    def bip141(self):
+    def bip141(self) -> bool:
         """Returns whether this block is signaling readiness for BIP141"""
         # BIP91 is signalled if the 2nd bit from the right is 1
         # shift 1 bit to the right and see if the last bit is 1
         return self.version >> 1 & 1 == 1
 
-    def target(self):
+    def target(self) -> int:
         """Returns the proof-of-work target based on the bits"""
         return bits_to_target(self.bits)
 
-    def difficulty(self):
+    def difficulty(self) -> int:
         """Returns the block difficulty based on the bits"""
         # note difficulty is (target of lowest difficulty) / (self's target)
         # lowest difficulty has bits that equal 0xffff001d
         lowest = 0xFFFF * 256 ** (0x1D - 3)
         return lowest / self.target()
 
-    def check_pow(self):
+    def check_pow(self) -> bool:
         """Returns whether this block satisfies proof of work"""
         # get the hash256 of the serialization of this block
         h256 = hash256(self.serialize())
@@ -113,11 +121,12 @@ class Block:
         # return whether this integer is less than the target
         return proof < self.target()
 
-    def validate_merkle_root(self):
+    def validate_merkle_root(self) -> bool:
         """Gets the merkle root of the tx_hashes and checks that it's
         the same as the merkle root of this block.
         """
         # reverse each item in self.tx_hashes
+        assert self.tx_hashes is not None
         hashes = [h[::-1] for h in self.tx_hashes]
         # compute the Merkle Root and reverse
         root = merkle_root(hashes)[::-1]

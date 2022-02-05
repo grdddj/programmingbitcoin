@@ -7,13 +7,13 @@ BIP37_CONSTANT = 0xFBA4C795
 
 
 class BloomFilter:
-    def __init__(self, size, function_count, tweak):
+    def __init__(self, size: int, function_count: int, tweak: int) -> None:
         self.size = size
         self.bit_field = [0] * (size * 8)
         self.function_count = function_count
         self.tweak = tweak
 
-    def add(self, item):
+    def add(self, item: bytes) -> None:
         """Add an item to the filter"""
         # iterate self.function_count number of times
         for i in range(self.function_count):
@@ -26,10 +26,10 @@ class BloomFilter:
             # set the bit field at bit to be 1
             self.bit_field[bit] = 1
 
-    def filter_bytes(self):
+    def filter_bytes(self) -> bytes:
         return bit_field_to_bytes(self.bit_field)
 
-    def filterload(self, flag=1):
+    def filterload(self, flag: int = 1) -> GenericMessage:
         """Return the filterload message"""
         # start the payload with the size of the filter in bytes
         payload = encode_varint(self.size)

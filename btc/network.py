@@ -23,7 +23,7 @@ TESTNET_NETWORK_MAGIC = b"\x0b\x11\x09\x07"
 
 
 class NetworkEnvelope:
-    def __init__(self, command, payload, testnet=False):
+    def __init__(self, command: bytes, payload: bytes, testnet: bool = False) -> None:
         self.command = command
         self.payload = payload
         if testnet:
@@ -31,14 +31,11 @@ class NetworkEnvelope:
         else:
             self.magic = NETWORK_MAGIC
 
-    def __repr__(self):
-        return "{}: {}".format(
-            self.command.decode("ascii"),
-            self.payload.hex(),
-        )
+    def __repr__(self) -> str:
+        return f"{self.command.decode('ascii')}: {self.payload.hex()}"
 
     @classmethod
-    def parse(cls, s, testnet=False):
+    def parse(cls, s: BytesIO, testnet: bool = False) -> "NetworkEnvelope":
         """Takes a stream and creates a NetworkEnvelope"""
         # check the network magic
         magic = s.read(4)
@@ -50,7 +47,7 @@ class NetworkEnvelope:
             expected_magic = NETWORK_MAGIC
         if magic != expected_magic:
             raise RuntimeError(
-                "magic is not right {} vs {}".format(magic.hex(), expected_magic.hex())
+                f"magic is not right {magic.hex()} vs {expected_magic.hex()}"
             )
         # command 12 bytes
         command = s.read(12)
@@ -69,7 +66,7 @@ class NetworkEnvelope:
         # return an instance of the class
         return cls(command, payload, testnet=testnet)
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         """Returns the byte serialization of the entire network message"""
         # add the network magic
         result = self.magic
@@ -84,7 +81,7 @@ class NetworkEnvelope:
         result += self.payload
         return result
 
-    def stream(self):
+    def stream(self) -> BytesIO:
         """Returns a stream for parsing the payload"""
         return BytesIO(self.payload)
 
@@ -135,7 +132,7 @@ class VersionMessage:
         user_agent=b"/programmingbitcoin:0.1/",
         latest_block=0,
         relay=False,
-    ):
+    ) -> None:
         self.version = version
         self.services = services
         if timestamp is None:
@@ -156,7 +153,7 @@ class VersionMessage:
         self.latest_block = latest_block
         self.relay = relay
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         """Serialize this message to send over the network"""
         # version is 4 bytes little endian
         result = int_to_little_endian(self.version, 4)
@@ -235,6 +232,7 @@ class PongMessage:
     def __init__(self, nonce):
         self.nonce = nonce
 
+    @classmethod
     def parse(cls, s):
         nonce = s.read(8)
         return cls(nonce)
@@ -392,7 +390,7 @@ class SimpleNode:
             message.command, message.serialize(), testnet=self.testnet
         )
         if self.logging:
-            print("sending: {}".format(envelope))
+            print(f"sending: {envelope}")
         # send the serialized envelope over the socket using sendall
         self.socket.sendall(envelope.serialize())
 
@@ -400,7 +398,7 @@ class SimpleNode:
         """Read a message from the socket"""
         envelope = NetworkEnvelope.parse(self.stream, testnet=self.testnet)
         if self.logging:
-            print("receiving: {}".format(envelope))
+            print(f"receiving: {envelope}")
         return envelope
 
     def wait_for(self, *message_classes):

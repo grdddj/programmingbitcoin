@@ -1,5 +1,6 @@
 import hashlib
 from logging import getLogger
+from typing import Callable, Dict, List, Union
 from unittest import TestCase
 
 from .ecc import S256Point, Signature
@@ -8,7 +9,7 @@ from .helper import hash160, hash256
 LOGGER = getLogger(__name__)
 
 
-def encode_num(num):
+def encode_num(num: int) -> bytes:
     if num == 0:
         return b""
     abs_num = abs(num)
@@ -30,7 +31,7 @@ def encode_num(num):
     return bytes(result)
 
 
-def decode_num(element):
+def decode_num(element: bytes) -> int:
     if element == b"":
         return 0
     # reverse for big endian
@@ -51,118 +52,118 @@ def decode_num(element):
         return result
 
 
-def op_0(stack):
+def op_0(stack: List[bytes]) -> bool:
     stack.append(encode_num(0))
     return True
 
 
-def op_1negate(stack):
+def op_1negate(stack: List[bytes]) -> bool:
     stack.append(encode_num(-1))
     return True
 
 
-def op_1(stack):
+def op_1(stack: List[bytes]) -> bool:
     stack.append(encode_num(1))
     return True
 
 
-def op_2(stack):
+def op_2(stack: List[bytes]) -> bool:
     stack.append(encode_num(2))
     return True
 
 
-def op_3(stack):
+def op_3(stack: List[bytes]) -> bool:
     stack.append(encode_num(3))
     return True
 
 
-def op_4(stack):
+def op_4(stack: List[bytes]) -> bool:
     stack.append(encode_num(4))
     return True
 
 
-def op_5(stack):
+def op_5(stack: List[bytes]) -> bool:
     stack.append(encode_num(5))
     return True
 
 
-def op_6(stack):
+def op_6(stack: List[bytes]) -> bool:
     stack.append(encode_num(6))
     return True
 
 
-def op_7(stack):
+def op_7(stack: List[bytes]) -> bool:
     stack.append(encode_num(7))
     return True
 
 
-def op_8(stack):
+def op_8(stack: List[bytes]) -> bool:
     stack.append(encode_num(8))
     return True
 
 
-def op_9(stack):
+def op_9(stack: List[bytes]) -> bool:
     stack.append(encode_num(9))
     return True
 
 
-def op_10(stack):
+def op_10(stack: List[bytes]) -> bool:
     stack.append(encode_num(10))
     return True
 
 
-def op_11(stack):
+def op_11(stack: List[bytes]) -> bool:
     stack.append(encode_num(11))
     return True
 
 
-def op_12(stack):
+def op_12(stack: List[bytes]) -> bool:
     stack.append(encode_num(12))
     return True
 
 
-def op_13(stack):
+def op_13(stack: List[bytes]) -> bool:
     stack.append(encode_num(13))
     return True
 
 
-def op_14(stack):
+def op_14(stack: List[bytes]) -> bool:
     stack.append(encode_num(14))
     return True
 
 
-def op_15(stack):
+def op_15(stack: List[bytes]) -> bool:
     stack.append(encode_num(15))
     return True
 
 
-def op_16(stack):
+def op_16(stack: List[bytes]) -> bool:
     stack.append(encode_num(16))
     return True
 
 
-def op_nop(stack):
+def op_nop(stack: List[bytes]) -> bool:
     return True
 
 
-def op_if(stack, items):
+def op_if(stack: List[bytes], items: List[Union[int, bytes]]) -> bool:
     if len(stack) < 1:
         return False
     # go through and re-make the items array based on the top stack element
-    true_items = []
-    false_items = []
+    true_items: List[Union[int, bytes]] = []
+    false_items: List[Union[int, bytes]] = []
     current_array = true_items
     found = False
     num_endifs_needed = 1
     while len(items) > 0:
         item = items.pop(0)
-        if item in (99, 100):
+        if item in (99, 100):  # OP_IF, OP_NOTIF
             # nested if, we have to go another endif
             num_endifs_needed += 1
             current_array.append(item)
-        elif num_endifs_needed == 1 and item == 103:
+        elif num_endifs_needed == 1 and item == 103:  # OP_ELSE
             current_array = false_items
-        elif item == 104:
+        elif item == 104:  # OP_ENDIF
             if num_endifs_needed == 1:
                 found = True
                 break
@@ -174,6 +175,7 @@ def op_if(stack, items):
     if not found:
         return False
     element = stack.pop()
+    # Prepend the items with the appropriate result
     if decode_num(element) == 0:
         items[:0] = false_items
     else:
@@ -181,24 +183,24 @@ def op_if(stack, items):
     return True
 
 
-def op_notif(stack, items):
+def op_notif(stack: List[bytes], items: List[Union[int, bytes]]) -> bool:
     if len(stack) < 1:
         return False
     # go through and re-make the items array based on the top stack element
-    true_items = []
-    false_items = []
+    true_items: List[Union[int, bytes]] = []
+    false_items: List[Union[int, bytes]] = []
     current_array = true_items
     found = False
     num_endifs_needed = 1
     while len(items) > 0:
         item = items.pop(0)
-        if item in (99, 100):
+        if item in (99, 100):  # OP_IF, OP_NOTIF
             # nested if, we have to go another endif
             num_endifs_needed += 1
             current_array.append(item)
-        elif num_endifs_needed == 1 and item == 103:
+        elif num_endifs_needed == 1 and item == 103:  # OP_ELSE
             current_array = false_items
-        elif item == 104:
+        elif item == 104:  # OP_ENDIF
             if num_endifs_needed == 1:
                 found = True
                 break
@@ -210,6 +212,7 @@ def op_notif(stack, items):
     if not found:
         return False
     element = stack.pop()
+    # Prepend the items with the appropriate result
     if decode_num(element) == 0:
         items[:0] = true_items
     else:
@@ -217,7 +220,7 @@ def op_notif(stack, items):
     return True
 
 
-def op_verify(stack):
+def op_verify(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = stack.pop()
@@ -226,25 +229,25 @@ def op_verify(stack):
     return True
 
 
-def op_return(stack):
+def op_return(stack: List[bytes]) -> bool:
     return False
 
 
-def op_toaltstack(stack, altstack):
+def op_toaltstack(stack: List[bytes], altstack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     altstack.append(stack.pop())
     return True
 
 
-def op_fromaltstack(stack, altstack):
+def op_fromaltstack(stack: List[bytes], altstack: List[bytes]) -> bool:
     if len(altstack) < 1:
         return False
     stack.append(altstack.pop())
     return True
 
 
-def op_2drop(stack):
+def op_2drop(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     stack.pop()
@@ -252,42 +255,42 @@ def op_2drop(stack):
     return True
 
 
-def op_2dup(stack):
+def op_2dup(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     stack.extend(stack[-2:])
     return True
 
 
-def op_3dup(stack):
+def op_3dup(stack: List[bytes]) -> bool:
     if len(stack) < 3:
         return False
     stack.extend(stack[-3:])
     return True
 
 
-def op_2over(stack):
+def op_2over(stack: List[bytes]) -> bool:
     if len(stack) < 4:
         return False
     stack.extend(stack[-4:-2])
     return True
 
 
-def op_2rot(stack):
+def op_2rot(stack: List[bytes]) -> bool:
     if len(stack) < 6:
         return False
     stack.extend(stack[-6:-4])
     return True
 
 
-def op_2swap(stack):
+def op_2swap(stack: List[bytes]) -> bool:
     if len(stack) < 4:
         return False
     stack[-4:] = stack[-2:] + stack[-4:-2]
     return True
 
 
-def op_ifdup(stack):
+def op_ifdup(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     if decode_num(stack[-1]) != 0:
@@ -295,40 +298,40 @@ def op_ifdup(stack):
     return True
 
 
-def op_depth(stack):
+def op_depth(stack: List[bytes]) -> bool:
     stack.append(encode_num(len(stack)))
     return True
 
 
-def op_drop(stack):
+def op_drop(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     stack.pop()
     return True
 
 
-def op_dup(stack):
+def op_dup(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     stack.append(stack[-1])
     return True
 
 
-def op_nip(stack):
+def op_nip(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     stack[-2:] = stack[-1:]
     return True
 
 
-def op_over(stack):
+def op_over(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     stack.append(stack[-2])
     return True
 
 
-def op_pick(stack):
+def op_pick(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     n = decode_num(stack.pop())
@@ -338,7 +341,7 @@ def op_pick(stack):
     return True
 
 
-def op_roll(stack):
+def op_roll(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     n = decode_num(stack.pop())
@@ -350,35 +353,35 @@ def op_roll(stack):
     return True
 
 
-def op_rot(stack):
+def op_rot(stack: List[bytes]) -> bool:
     if len(stack) < 3:
         return False
     stack.append(stack.pop(-3))
     return True
 
 
-def op_swap(stack):
+def op_swap(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     stack.append(stack.pop(-2))
     return True
 
 
-def op_tuck(stack):
+def op_tuck(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     stack.insert(-2, stack[-1])
     return True
 
 
-def op_size(stack):
+def op_size(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     stack.append(encode_num(len(stack[-1])))
     return True
 
 
-def op_equal(stack):
+def op_equal(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = stack.pop()
@@ -390,11 +393,11 @@ def op_equal(stack):
     return True
 
 
-def op_equalverify(stack):
+def op_equalverify(stack: List[bytes]) -> bool:
     return op_equal(stack) and op_verify(stack)
 
 
-def op_1add(stack):
+def op_1add(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = decode_num(stack.pop())
@@ -402,7 +405,7 @@ def op_1add(stack):
     return True
 
 
-def op_1sub(stack):
+def op_1sub(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = decode_num(stack.pop())
@@ -410,7 +413,7 @@ def op_1sub(stack):
     return True
 
 
-def op_negate(stack):
+def op_negate(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = decode_num(stack.pop())
@@ -418,7 +421,7 @@ def op_negate(stack):
     return True
 
 
-def op_abs(stack):
+def op_abs(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = decode_num(stack.pop())
@@ -429,7 +432,7 @@ def op_abs(stack):
     return True
 
 
-def op_not(stack):
+def op_not(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = stack.pop()
@@ -440,7 +443,7 @@ def op_not(stack):
     return True
 
 
-def op_0notequal(stack):
+def op_0notequal(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = stack.pop()
@@ -451,7 +454,7 @@ def op_0notequal(stack):
     return True
 
 
-def op_add(stack):
+def op_add(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -460,7 +463,7 @@ def op_add(stack):
     return True
 
 
-def op_sub(stack):
+def op_sub(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -469,7 +472,7 @@ def op_sub(stack):
     return True
 
 
-def op_booland(stack):
+def op_booland(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -481,7 +484,7 @@ def op_booland(stack):
     return True
 
 
-def op_boolor(stack):
+def op_boolor(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -493,7 +496,7 @@ def op_boolor(stack):
     return True
 
 
-def op_numequal(stack):
+def op_numequal(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -505,11 +508,11 @@ def op_numequal(stack):
     return True
 
 
-def op_numequalverify(stack):
+def op_numequalverify(stack: List[bytes]) -> bool:
     return op_numequal(stack) and op_verify(stack)
 
 
-def op_numnotequal(stack):
+def op_numnotequal(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -521,7 +524,7 @@ def op_numnotequal(stack):
     return True
 
 
-def op_lessthan(stack):
+def op_lessthan(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -533,7 +536,7 @@ def op_lessthan(stack):
     return True
 
 
-def op_greaterthan(stack):
+def op_greaterthan(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -545,7 +548,7 @@ def op_greaterthan(stack):
     return True
 
 
-def op_lessthanorequal(stack):
+def op_lessthanorequal(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -557,7 +560,7 @@ def op_lessthanorequal(stack):
     return True
 
 
-def op_greaterthanorequal(stack):
+def op_greaterthanorequal(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -569,7 +572,7 @@ def op_greaterthanorequal(stack):
     return True
 
 
-def op_min(stack):
+def op_min(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -581,7 +584,7 @@ def op_min(stack):
     return True
 
 
-def op_max(stack):
+def op_max(stack: List[bytes]) -> bool:
     if len(stack) < 2:
         return False
     element1 = decode_num(stack.pop())
@@ -593,7 +596,7 @@ def op_max(stack):
     return True
 
 
-def op_within(stack):
+def op_within(stack: List[bytes]) -> bool:
     if len(stack) < 3:
         return False
     maximum = decode_num(stack.pop())
@@ -606,7 +609,7 @@ def op_within(stack):
     return True
 
 
-def op_ripemd160(stack):
+def op_ripemd160(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = stack.pop()
@@ -614,7 +617,7 @@ def op_ripemd160(stack):
     return True
 
 
-def op_sha1(stack):
+def op_sha1(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = stack.pop()
@@ -622,7 +625,7 @@ def op_sha1(stack):
     return True
 
 
-def op_sha256(stack):
+def op_sha256(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = stack.pop()
@@ -630,7 +633,7 @@ def op_sha256(stack):
     return True
 
 
-def op_hash160(stack):
+def op_hash160(stack: List[bytes]) -> bool:
     # check that there's at least 1 element on the stack
     if len(stack) < 1:
         return False
@@ -642,7 +645,7 @@ def op_hash160(stack):
     return True
 
 
-def op_hash256(stack):
+def op_hash256(stack: List[bytes]) -> bool:
     if len(stack) < 1:
         return False
     element = stack.pop()
@@ -650,7 +653,7 @@ def op_hash256(stack):
     return True
 
 
-def op_checksig(stack, z):
+def op_checksig(stack: List[bytes], z: int) -> bool:
     # check that there are at least 2 elements on the stack
     if len(stack) < 2:
         return False
@@ -675,23 +678,23 @@ def op_checksig(stack, z):
     return True
 
 
-def op_checksigverify(stack, z):
+def op_checksigverify(stack: List[bytes], z: int) -> bool:
     return op_checksig(stack, z) and op_verify(stack)
 
 
-def op_checkmultisig(stack, z):
+def op_checkmultisig(stack: List[bytes], z: int) -> bool:
     if len(stack) < 1:
         return False
     n = decode_num(stack.pop())
     if len(stack) < n + 1:
         return False
-    sec_pubkeys = []
+    sec_pubkeys: List[bytes] = []
     for _ in range(n):
         sec_pubkeys.append(stack.pop())
     m = decode_num(stack.pop())
     if len(stack) < m + 1:
         return False
-    der_signatures = []
+    der_signatures: List[bytes] = []
     for _ in range(m):
         # signature is assumed to be using SIGHASH_ALL
         der_signatures.append(stack.pop()[:-1])
@@ -722,11 +725,11 @@ def op_checkmultisig(stack, z):
     return True
 
 
-def op_checkmultisigverify(stack, z):
+def op_checkmultisigverify(stack: List[bytes], z: int) -> bool:
     return op_checkmultisig(stack, z) and op_verify(stack)
 
 
-def op_checklocktimeverify(stack, locktime, sequence):
+def op_checklocktimeverify(stack: List[bytes], locktime: int, sequence: int) -> bool:
     if sequence == 0xFFFFFFFF:
         return False
     if len(stack) < 1:
@@ -741,7 +744,7 @@ def op_checklocktimeverify(stack, locktime, sequence):
     return True
 
 
-def op_checksequenceverify(stack, version, sequence):
+def op_checksequenceverify(stack: List[bytes], version: int, sequence: int) -> bool:
     if sequence & (1 << 31) == (1 << 31):
         return False
     if len(stack) < 1:
@@ -798,7 +801,7 @@ class OpTest(TestCase):
         self.assertEqual(decode_num(stack[0]), 1)
 
 
-OP_CODE_FUNCTIONS = {
+OP_CODE_FUNCTIONS: Dict[int, Callable[..., bool]] = {
     0: op_0,
     79: op_1negate,
     81: op_1,
@@ -885,7 +888,7 @@ OP_CODE_FUNCTIONS = {
     185: op_nop,
 }
 
-OP_CODE_NAMES = {
+OP_CODE_NAMES: Dict[int, str] = {
     0: "OP_0",
     76: "OP_PUSHDATA1",
     77: "OP_PUSHDATA2",

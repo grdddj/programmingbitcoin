@@ -25,7 +25,7 @@ class MerkleTree:
         self.current_depth = 0
         self.current_index = 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = []
         for depth, level in enumerate(self.nodes):
             items = []
@@ -33,11 +33,11 @@ class MerkleTree:
                 if h is None:
                     short = "None"
                 else:
-                    short = "{}...".format(h.hex()[:8])
+                    short = f"{h.hex()[:8]}..."
                 if depth == self.current_depth and index == self.current_index:
-                    items.append("*{}*".format(short[:-2]))
+                    items.append(f"*{short[:-2]}*")
                 else:
-                    items.append("{}".format(short))
+                    items.append(f"{short}")
             result.append(", ".join(items))
         return "\n".join(result)
 
@@ -120,7 +120,7 @@ class MerkleTree:
                     # we've completed this sub-tree, go up
                     self.up()
         if len(hashes) != 0:
-            raise RuntimeError("hashes not all consumed {}".format(len(hashes)))
+            raise RuntimeError(f"hashes not all consumed {len(hashes)}")
         for flag_bit in flag_bits:
             if flag_bit != 0:
                 raise RuntimeError("flag bits not all consumed")
@@ -200,11 +200,12 @@ class MerkleBlock:
         self.hashes = hashes
         self.flags = flags
 
-    def __repr__(self):
-        result = "{}\n".format(self.total)
+    def __repr__(self) -> str:
+        result = f"{self.total}\n"
         for h in self.hashes:
-            result += "\t{}\n".format(h.hex())
-        result += "{}".format(self.flags.hex())
+            result += f"\t{h.hex()}\n"
+        result += self.flags.hex()
+        return result
 
     @classmethod
     def parse(cls, s):
